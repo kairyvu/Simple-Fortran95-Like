@@ -132,14 +132,14 @@ LexItem getNextToken(istream& in, int& linenum) {
 							break; 
 							
 						case '*':
+							tt = MULT;
 							nextchar = in.peek();
 							if (nextchar == '*') {
 								in.get(ch);
 								tt = POW;
 								break;
 							}
-							else if (nextchar == ' ' || nextchar == '\n') tt = MULT;
-							else tt = DEF;
+							else if (nextchar == ',') tt = DEF;
 							break;
 
 						case '/':
