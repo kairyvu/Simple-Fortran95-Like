@@ -122,3 +122,37 @@ bool Factor(istream& in, int& line, int sign) {
     }
     return true;
 }
+
+bool TermExpr(istream& in, int& line) {
+    bool status = SFactor(in, line);
+    if (!status) {
+        ParseError(line, "Missing SFactor");
+        return false;
+    }
+    LexItem t = Parser::GetNextToken(in, line);
+    if (t.GetToken() == POW) {
+        if (!SFactor(in, line)) {
+            ParseError(line, "Missing SFactor after POW");
+            return false;
+        }
+    }
+    else Parser::PushBackToken(t);
+    return true;
+}
+
+bool MultExpr(istream& in, int& line) {
+    bool status = TermExpr(in, line);
+    if (!status) {
+        ParseError(line, "Missing TermExpr");
+        return false;
+    }
+    LexItem t = Parser::GetNextToken(in, line);
+    if (t.GetToken() == MULT || t.GetToken() == DIV) {
+        if (!TermExpr(in, line)) {
+            ParseError(line, "Missing TermExpr after MULT or DIV");
+            return false;
+        }
+    }
+    else Parser::PushBackToken(t);
+    return true;
+}
