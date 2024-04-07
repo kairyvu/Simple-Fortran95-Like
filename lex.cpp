@@ -268,5 +268,5 @@ LexItem getNextToken(istream& in, int& linenum) {
 	
 	if (in.eof()) return LexItem(DONE, "", linenum);
 		
-	return LexItem(ERR, "some strange I/O error", linenum);
+	return LexItem(ERR, "Error: Some strange symbol", linenum);
 }
