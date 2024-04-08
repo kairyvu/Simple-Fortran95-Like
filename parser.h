@@ -25,6 +25,7 @@ extern bool MultExpr(istream& in, int& line);
 extern bool TermExpr(istream& in, int& line);
 extern bool SFactor(istream& in, int& line);
 extern bool Factor(istream& in, int& line, int sign);
+extern bool ConditionStmt(istream& in, int& line);
 extern int ErrCount();
 
 #endif /* PARSE_H_ */
