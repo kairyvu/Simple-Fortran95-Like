@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "parserInterp.h"
 #include <string>
 #include <map>
 #include "lex.h"
@@ -6,24 +6,29 @@
 map<string, bool> defVar;
 map<string, Token> SymTable;
 
-namespace Parser {
+namespace Parser
+{
 	bool pushed_back = false;
-	LexItem	pushed_token;
+	LexItem pushed_token;
 
-	static LexItem GetNextToken(istream& in, int& line) {
-		if( pushed_back ) {
+	static LexItem GetNextToken(istream &in, int &line)
+	{
+		if (pushed_back)
+		{
 			pushed_back = false;
 			return pushed_token;
 		}
 		return getNextToken(in, line);
 	}
 
-	static void PushBackToken(LexItem & t) {
-		if( pushed_back ) {
+	static void PushBackToken(LexItem &t)
+	{
+		if (pushed_back)
+		{
 			abort();
 		}
 		pushed_back = true;
-		pushed_token = t;	
+		pushed_token = t;
 	}
 
 }
@@ -32,7 +37,7 @@ static int error_count = 0;
 
 int ErrCount()
 {
-    return error_count;
+	return error_count;
 }
 
 void ParseError(int line, string msg)
@@ -41,39 +46,43 @@ void ParseError(int line, string msg)
 	cout << line << ": " << msg << endl;
 }
 
-bool IdentList(istream& in, int& line);
+bool IdentList(istream &in, int &line);
 
-
-//Program is: Prog = PROGRAM IDENT {Decl} {Stmt} END PROGRAM IDENT
-bool Prog(istream& in, int& line)
+// Program is: Prog = PROGRAM IDENT {Decl} {Stmt} END PROGRAM IDENT
+bool Prog(istream &in, int &line)
 {
 	bool dl = false, sl = false;
 	LexItem tok = Parser::GetNextToken(in, line);
-		
-	if (tok.GetToken() == PROGRAM) {
+
+	if (tok.GetToken() == PROGRAM)
+	{
 		tok = Parser::GetNextToken(in, line);
-		if (tok.GetToken() == IDENT) {
+		if (tok.GetToken() == IDENT)
+		{
 			dl = Decl(in, line);
-			if( !dl  )
+			if (!dl)
 			{
 				ParseError(line, "Incorrect Declaration in Program");
 				return false;
 			}
 			sl = Stmt(in, line);
-			if( !sl  )
+			if (!sl)
 			{
 				ParseError(line, "Incorrect Statement in program");
 				return false;
-			}	
+			}
 			tok = Parser::GetNextToken(in, line);
-			
-			if (tok.GetToken() == END) {
+
+			if (tok.GetToken() == END)
+			{
 				tok = Parser::GetNextToken(in, line);
-				
-				if (tok.GetToken() == PROGRAM) {
+
+				if (tok.GetToken() == PROGRAM)
+				{
 					tok = Parser::GetNextToken(in, line);
-					
-					if (tok.GetToken() == IDENT) {
+
+					if (tok.GetToken() == IDENT)
+					{
 						cout << "(DONE)" << endl;
 						return true;
 					}
@@ -81,19 +90,19 @@ bool Prog(istream& in, int& line)
 					{
 						ParseError(line, "Missing Program Name");
 						return false;
-					}	
+					}
 				}
 				else
 				{
 					ParseError(line, "Missing PROGRAM at the End");
 					return false;
-				}	
+				}
 			}
 			else
 			{
 				ParseError(line, "Missing END of Program");
 				return false;
-			}	
+			}
 		}
 		else
 		{
@@ -101,12 +110,13 @@ bool Prog(istream& in, int& line)
 			return false;
 		}
 	}
-	else if(tok.GetToken() == ERR){
+	else if (tok.GetToken() == ERR)
+	{
 		ParseError(line, "Unrecognized Input Pattern");
 		cout << "(" << tok.GetLexeme() << ")" << endl;
 		return false;
 	}
-	
+
 	else
 	{
 		ParseError(line, "Missing Program keyword");
@@ -114,26 +124,29 @@ bool Prog(istream& in, int& line)
 	}
 }
 
-//Decl ::= Type :: VarList 
-//Type ::= INTEGER | REAL | CHARARACTER [(LEN = ICONST)] 
-bool Decl(istream& in, int& line) {
+// Decl ::= Type :: VarList
+// Type ::= INTEGER | REAL | CHARARACTER [(LEN = ICONST)]
+bool Decl(istream &in, int &line)
+{
 	bool status = false;
 	LexItem tok;
 	string strLen;
-	
+
 	LexItem t = Parser::GetNextToken(in, line);
-	
-	if(t == INTEGER || t == REAL || t == CHARACTER ) {
+
+	if (t == INTEGER || t == REAL || t == CHARACTER)
+	{
 		tok = t;
-		
+
 		tok = Parser::GetNextToken(in, line);
-		if (tok.GetToken() == DCOLON) {
+		if (tok.GetToken() == DCOLON)
+		{
 			status = VarList(in, line);
-			
+
 			if (status)
 			{
 				status = Decl(in, line);
-				if(!status)
+				if (!status)
 				{
 					ParseError(line, "Declaration Syntactic Error.");
 					return false;
@@ -146,35 +159,35 @@ bool Decl(istream& in, int& line) {
 				return false;
 			}
 		}
-		else if(t == CHARACTER && tok.GetToken() == LPAREN)
+		else if (t == CHARACTER && tok.GetToken() == LPAREN)
 		{
 			tok = Parser::GetNextToken(in, line);
-			
-			if(tok.GetToken() == LEN)
+
+			if (tok.GetToken() == LEN)
 			{
 				tok = Parser::GetNextToken(in, line);
-				
-				if(tok.GetToken() == ASSOP)
+
+				if (tok.GetToken() == ASSOP)
 				{
 					tok = Parser::GetNextToken(in, line);
-					
-					if(tok.GetToken() == ICONST)
-					{ 
+
+					if (tok.GetToken() == ICONST)
+					{
 						strLen = tok.GetLexeme();
-						
+
 						tok = Parser::GetNextToken(in, line);
-						if(tok.GetToken() == RPAREN)
+						if (tok.GetToken() == RPAREN)
 						{
 							tok = Parser::GetNextToken(in, line);
-							if(tok.GetToken() == DCOLON)
+							if (tok.GetToken() == DCOLON)
 							{
 								status = VarList(in, line);
-								
+
 								if (status)
 								{
 									cout << "Definition of Strings with length of " << strLen << " in declaration statement." << endl;
 									status = Decl(in, line);
-									if(!status)
+									if (!status)
 									{
 										ParseError(line, "Declaration Syntactic Error.");
 										return false;
@@ -193,7 +206,6 @@ bool Decl(istream& in, int& line) {
 							ParseError(line, "Missing Right Parenthesis for String Length definition.");
 							return false;
 						}
-					
 					}
 					else
 					{
@@ -208,136 +220,136 @@ bool Decl(istream& in, int& line) {
 			ParseError(line, "Missing Double Colons");
 			return false;
 		}
-			
 	}
-		
+
 	Parser::PushBackToken(t);
 	return true;
-}//End of Decl
+} // End of Decl
 
-//Stmt ::= AssigStmt | BlockIfStmt | PrintStmt | SimpleIfStmt
-bool Stmt(istream& in, int& line) {
+// Stmt ::= AssigStmt | BlockIfStmt | PrintStmt | SimpleIfStmt
+bool Stmt(istream &in, int &line)
+{
 	bool status;
-	
+
 	LexItem t = Parser::GetNextToken(in, line);
-	
-	switch( t.GetToken() ) {
+
+	switch (t.GetToken())
+	{
 
 	case PRINT:
 		status = PrintStmt(in, line);
-		
-		if(status)
+
+		if (status)
 			status = Stmt(in, line);
 		break;
 
 	case IF:
 		status = BlockIfStmt(in, line);
-		if(status)
+		if (status)
 			status = Stmt(in, line);
 		break;
 
 	case IDENT:
 		Parser::PushBackToken(t);
-        status = AssignStmt(in, line);
-		if(status)
+		status = AssignStmt(in, line);
+		if (status)
 			status = Stmt(in, line);
 		break;
-		
-	
+
 	default:
 		Parser::PushBackToken(t);
 		return true;
 	}
 
 	return status;
-}//End of Stmt
+} // End of Stmt
 
-bool SimpleStmt(istream& in, int& line) {
+bool SimpleStmt(istream &in, int &line)
+{
 	bool status;
-	
+
 	LexItem t = Parser::GetNextToken(in, line);
-	
-	switch( t.GetToken() ) {
+
+	switch (t.GetToken())
+	{
 
 	case PRINT:
 		status = PrintStmt(in, line);
-		
-		if(!status)
+
+		if (!status)
 		{
 			ParseError(line, "Incorrect Print Statement");
 			return false;
-		}	
+		}
 		cout << "Print statement in a Simple If statement." << endl;
 		break;
 
 	case IDENT:
 		Parser::PushBackToken(t);
-        status = AssignStmt(in, line);
-		if(!status)
+		status = AssignStmt(in, line);
+		if (!status)
 		{
 			ParseError(line, "Incorrect Assignent Statement");
 			return false;
 		}
 		cout << "Assignment statement in a Simple If statement." << endl;
-			
+
 		break;
-		
-	
+
 	default:
 		Parser::PushBackToken(t);
 		return true;
 	}
 
 	return status;
-}//End of SimpleStmt
+} // End of SimpleStmt
 
-//VarList ::= Var [= Expr] {, Var [= Expr]}
-bool VarList(istream& in, int& line) {
+// VarList ::= Var [= Expr] {, Var [= Expr]}
+bool VarList(istream &in, int &line)
+{
 	bool status = false, exprstatus = false;
 	string identstr;
-	
-	
+
 	LexItem tok = Parser::GetNextToken(in, line);
-	if(tok == IDENT)
+	if (tok == IDENT)
 	{
-		
+
 		identstr = tok.GetLexeme();
 		if (!(defVar.find(identstr)->second))
 		{
 			defVar[identstr] = true;
-		}	
+		}
 		else
 		{
 			ParseError(line, "Variable Redefinition");
 			return false;
 		}
-		
 	}
 	else
 	{
-		
+
 		ParseError(line, "Missing Variable Name");
 		return false;
 	}
-		
+
 	tok = Parser::GetNextToken(in, line);
-	if(tok == ASSOP)
+	if (tok == ASSOP)
 	{
-		
+
 		exprstatus = Expr(in, line);
-		if(!exprstatus)
+		if (!exprstatus)
 		{
 			ParseError(line, "Incorrect initialization for a variable.");
 			return false;
 		}
-		
-		cout<< "Initialization of the variable " << identstr <<" in the declaration statement." << endl;
+
+		cout << "Initialization of the variable " << identstr << " in the declaration statement." << endl;
 		tok = Parser::GetNextToken(in, line);
-		
-		if (tok == COMMA) {
-			
+
+		if (tok == COMMA)
+		{
+
 			status = VarList(in, line);
-			
 		}
 		else
 		{
@@ -345,91 +357,99 @@ bool VarList(istream& in, int& line) {
 			return true;
 		}
 	}
-	else if (tok == COMMA) {
-		
+	else if (tok == COMMA)
+	{
+
 		status = VarList(in, line);
 	}
-	else if(tok == ERR)
+	else if (tok == ERR)
 	{
 		ParseError(line, "Unrecognized Input Pattern");
-		
+
 		return false;
 	}
-	else {
-		
+	else
+	{
+
 		Parser::PushBackToken(tok);
 		return true;
 	}
-	
+
 	return status;
-	
-}//End of VarList
-	
 
+} // End of VarList
 
-//PrintStmt:= PRINT *, ExpreList 
-bool PrintStmt(istream& in, int& line) {
+// PrintStmt:= PRINT *, ExpreList
+bool PrintStmt(istream &in, int &line)
+{
 	LexItem t;
-	
+
 	t = Parser::GetNextToken(in, line);
-	
- 	if( t != DEF ) {
-		
+
+	if (t != DEF)
+	{
+
 		ParseError(line, "Print statement syntax error.");
 		return false;
 	}
 	t = Parser::GetNextToken(in, line);
-	
-	if( t != COMMA ) {
-		
+
+	if (t != COMMA)
+	{
+
 		ParseError(line, "Missing Comma.");
 		return false;
 	}
 	bool ex = ExprList(in, line);
-	
-	if( !ex ) {
+
+	if (!ex)
+	{
 		ParseError(line, "Missing expression after Print Statement");
 		return false;
 	}
-	
-	return ex;
-}//End of PrintStmt
 
-//BlockIfStmt:= if (Expr) then {Stmt} [Else Stmt]
-//SimpleIfStatement := if (Expr) Stmt
-bool BlockIfStmt(istream& in, int& line) {
-	bool ex=false, status ; 
+	return ex;
+} // End of PrintStmt
+
+// BlockIfStmt:= if (Expr) then {Stmt} [Else Stmt]
+// SimpleIfStatement := if (Expr) Stmt
+bool BlockIfStmt(istream &in, int &line)
+{
+	bool ex = false, status;
 	static int nestlevel = 0;
 	int level;
 	LexItem t;
-	
+
 	t = Parser::GetNextToken(in, line);
-	if( t != LPAREN ) {
-		
+	if (t != LPAREN)
+	{
+
 		ParseError(line, "Missing Left Parenthesis");
 		return false;
 	}
-	
+
 	ex = RelExpr(in, line);
-	if( !ex ) {
+	if (!ex)
+	{
 		ParseError(line, "Missing if statement condition");
 		return false;
 	}
-	
+
 	t = Parser::GetNextToken(in, line);
-	if(t != RPAREN ) {
-		
+	if (t != RPAREN)
+	{
+
 		ParseError(line, "Missing Right Parenthesis");
 		return false;
 	}
-	
+
 	t = Parser::GetNextToken(in, line);
-	if(t != THEN)
+	if (t != THEN)
 	{
 		Parser::PushBackToken(t);
-		
+
 		status = SimpleStmt(in, line);
-		if(status)
+		if (status)
 		{
 			return true;
 		}
@@ -438,352 +458,379 @@ bool BlockIfStmt(istream& in, int& line) {
 			ParseError(line, "If-Stmt Syntax Error");
 			return false;
 		}
-		
 	}
 	nestlevel++;
 	level = nestlevel;
 	status = Stmt(in, line);
-	if(!status)
+	if (!status)
 	{
 		ParseError(line, "Missing Statement for If-Stmt Then-Part");
 		return false;
 	}
 	t = Parser::GetNextToken(in, line);
-	if( t == ELSE ) {
+	if (t == ELSE)
+	{
 		status = Stmt(in, line);
-		if(!status)
+		if (!status)
 		{
 			ParseError(line, "Missing Statement for If-Stmt Else-Part");
 			return false;
 		}
 		else
-		  t = Parser::GetNextToken(in, line);
-		
+			t = Parser::GetNextToken(in, line);
 	}
-	
-	
-	if(t != END ) {
-		
+
+	if (t != END)
+	{
+
 		ParseError(line, "Missing END of IF");
 		return false;
 	}
 	t = Parser::GetNextToken(in, line);
-	if(t == IF ) {
+	if (t == IF)
+	{
 		cout << "End of Block If statement at nesting level " << level << endl;
 		return true;
-	}	
-	
+	}
+
 	Parser::PushBackToken(t);
 	ParseError(line, "Missing IF at End of IF statement");
 	return false;
-}//End of IfStmt function
+} // End of IfStmt function
 
-//Var:= ident
-bool Var(istream& in, int& line)
+// Var:= ident
+bool Var(istream &in, int &line)
 {
 	string identstr;
-	
+
 	LexItem tok = Parser::GetNextToken(in, line);
-	
-	if (tok == IDENT){
+
+	if (tok == IDENT)
+	{
 		identstr = tok.GetLexeme();
-		
+
 		if (!(defVar.find(identstr)->second))
 		{
 			ParseError(line, "Undeclared Variable");
 			return false;
-		}	
+		}
 		return true;
 	}
-	else if(tok.GetToken() == ERR){
+	else if (tok.GetToken() == ERR)
+	{
 		ParseError(line, "Unrecognized Input Pattern");
 		cout << "(" << tok.GetLexeme() << ")" << endl;
 		return false;
 	}
 	return false;
-}//End of Var
+} // End of Var
 
-//AssignStmt:= Var = Expr
-bool AssignStmt(istream& in, int& line) {
-	
+// AssignStmt:= Var = Expr
+bool AssignStmt(istream &in, int &line)
+{
+
 	bool varstatus = false, status = false;
 	LexItem t;
-	
-	varstatus = Var( in, line);
-	
-	
-	if (varstatus){
+
+	varstatus = Var(in, line);
+
+	if (varstatus)
+	{
 		t = Parser::GetNextToken(in, line);
-		
-		if (t == ASSOP){
+
+		if (t == ASSOP)
+		{
 			status = Expr(in, line);
-			if(!status) {
+			if (!status)
+			{
 				ParseError(line, "Missing Expression in Assignment Statment");
 				return status;
 			}
-			
 		}
-		else if(t.GetToken() == ERR){
+		else if (t.GetToken() == ERR)
+		{
 			ParseError(line, "Unrecognized Input Pattern");
 			cout << "(" << t.GetLexeme() << ")" << endl;
 			return false;
 		}
-		else {
+		else
+		{
 			ParseError(line, "Missing Assignment Operator");
 			return false;
 		}
 	}
-	else {
+	else
+	{
 		ParseError(line, "Missing Left-Hand Side Variable in Assignment statement");
 		return false;
 	}
-	return status;	
-}//End of AssignStmt
+	return status;
+} // End of AssignStmt
 
-//ExprList:= Expr {,Expr}
-bool ExprList(istream& in, int& line) {
+// ExprList:= Expr {,Expr}
+bool ExprList(istream &in, int &line)
+{
 	bool status = false;
-	
+
 	status = Expr(in, line);
-	if(!status){
+	if (!status)
+	{
 		ParseError(line, "Missing Expression");
 		return false;
 	}
-	
+
 	LexItem tok = Parser::GetNextToken(in, line);
-	
-	if (tok == COMMA) {
-		
+
+	if (tok == COMMA)
+	{
+
 		status = ExprList(in, line);
-		
 	}
-	else if(tok.GetToken() == ERR){
+	else if (tok.GetToken() == ERR)
+	{
 		ParseError(line, "Unrecognized Input Pattern");
 		cout << "(" << tok.GetLexeme() << ")" << endl;
 		return false;
 	}
-	else{
+	else
+	{
 		Parser::PushBackToken(tok);
 		return true;
 	}
 	return status;
-}//End of ExprList
+} // End of ExprList
 
-//RelExpr ::= Expr  [ ( == | < | > ) Expr ]
-bool RelExpr(istream& in, int& line) {
-	
+// RelExpr ::= Expr  [ ( == | < | > ) Expr ]
+bool RelExpr(istream &in, int &line)
+{
+
 	bool t1 = Expr(in, line);
 	LexItem tok;
-	
-	if( !t1 ) {
+
+	if (!t1)
+	{
 		return false;
 	}
-	
+
 	tok = Parser::GetNextToken(in, line);
-	if(tok.GetToken() == ERR){
+	if (tok.GetToken() == ERR)
+	{
 		ParseError(line, "Unrecognized Input Pattern");
 		cout << "(" << tok.GetLexeme() << ")" << endl;
 		return false;
 	}
-	if ( tok == EQ || tok == LTHAN || tok == GTHAN) 
+	if (tok == EQ || tok == LTHAN || tok == GTHAN)
 	{
 		t1 = Expr(in, line);
-		if( !t1 ) 
+		if (!t1)
 		{
 			ParseError(line, "Missing operand after operator");
 			return false;
 		}
-		
 	}
-	
-	return true;
-}//End of RelExpr
 
-//Expr ::= MultExpr { ( + | - | // ) MultExpr }
-bool Expr(istream& in, int& line) {
-	
+	return true;
+} // End of RelExpr
+
+// Expr ::= MultExpr { ( + | - | // ) MultExpr }
+bool Expr(istream &in, int &line)
+{
+
 	bool t1 = MultExpr(in, line);
 	LexItem tok;
-	
-	if( !t1 ) {
+
+	if (!t1)
+	{
 		return false;
 	}
-	
+
 	tok = Parser::GetNextToken(in, line);
-	if(tok.GetToken() == ERR){
+	if (tok.GetToken() == ERR)
+	{
 		ParseError(line, "Unrecognized Input Pattern");
 		cout << "(" << tok.GetLexeme() << ")" << endl;
 		return false;
 	}
-	while ( tok == PLUS || tok == MINUS || tok == CAT) 
+	while (tok == PLUS || tok == MINUS || tok == CAT)
 	{
 		t1 = MultExpr(in, line);
-		if( !t1 ) 
+		if (!t1)
 		{
 			ParseError(line, "Missing operand after operator");
 			return false;
 		}
-		
+
 		tok = Parser::GetNextToken(in, line);
-		if(tok.GetToken() == ERR){
+		if (tok.GetToken() == ERR)
+		{
 			ParseError(line, "Unrecognized Input Pattern");
 			cout << "(" << tok.GetLexeme() << ")" << endl;
 			return false;
-		}		
-		
+		}
 	}
 	Parser::PushBackToken(tok);
 	return true;
-}//End of Expr
+} // End of Expr
 
-//MultExpr ::= TermExpr { ( * | / ) TermExpr }
-bool MultExpr(istream& in, int& line) {
-	
+// MultExpr ::= TermExpr { ( * | / ) TermExpr }
+bool MultExpr(istream &in, int &line)
+{
+
 	bool t1 = TermExpr(in, line);
 	LexItem tok;
-	
-	if( !t1 ) {
+
+	if (!t1)
+	{
 		return false;
 	}
-	
-	tok	= Parser::GetNextToken(in, line);
-	if(tok.GetToken() == ERR){
-			ParseError(line, "Unrecognized Input Pattern");
-			cout << "(" << tok.GetLexeme() << ")" << endl;
-			return false;
+
+	tok = Parser::GetNextToken(in, line);
+	if (tok.GetToken() == ERR)
+	{
+		ParseError(line, "Unrecognized Input Pattern");
+		cout << "(" << tok.GetLexeme() << ")" << endl;
+		return false;
 	}
-	while ( tok == MULT || tok == DIV  )
+	while (tok == MULT || tok == DIV)
 	{
 		t1 = TermExpr(in, line);
-		
-		if( !t1 ) {
+
+		if (!t1)
+		{
 			ParseError(line, "Missing operand after operator");
 			return false;
 		}
-		
-		tok	= Parser::GetNextToken(in, line);
-		if(tok.GetToken() == ERR){
+
+		tok = Parser::GetNextToken(in, line);
+		if (tok.GetToken() == ERR)
+		{
 			ParseError(line, "Unrecognized Input Pattern");
 			cout << "(" << tok.GetLexeme() << ")" << endl;
 			return false;
 		}
-		
 	}
 	Parser::PushBackToken(tok);
 	return true;
-}//End of MultExpr
+} // End of MultExpr
 
-//TermExpr ::= SFactor { ** SFactor }
-bool TermExpr(istream& in, int& line) {
-	
+// TermExpr ::= SFactor { ** SFactor }
+bool TermExpr(istream &in, int &line)
+{
+
 	bool t1 = SFactor(in, line);
 	LexItem tok;
 
-	if( !t1 ) {
+	if (!t1)
+	{
 		return false;
 	}
-	
-	tok	= Parser::GetNextToken(in, line);
-	if(tok.GetToken() == ERR){
-			ParseError(line, "Unrecognized Input Pattern");
-			cout << "(" << tok.GetLexeme() << ")" << endl;
-			return false;
+
+	tok = Parser::GetNextToken(in, line);
+	if (tok.GetToken() == ERR)
+	{
+		ParseError(line, "Unrecognized Input Pattern");
+		cout << "(" << tok.GetLexeme() << ")" << endl;
+		return false;
 	}
-	while ( tok == POW  )
+	while (tok == POW)
 	{
 		t1 = SFactor(in, line);
-		
-		if( !t1 ) {
+
+		if (!t1)
+		{
 			ParseError(line, "Missing exponent operand");
 			return false;
 		}
-		
-		tok	= Parser::GetNextToken(in, line);
-		if(tok.GetToken() == ERR){
+
+		tok = Parser::GetNextToken(in, line);
+		if (tok.GetToken() == ERR)
+		{
 			ParseError(line, "Unrecognized Input Pattern");
 			cout << "(" << tok.GetLexeme() << ")" << endl;
 			return false;
 		}
-		
 	}
 	Parser::PushBackToken(tok);
 	return true;
-}//End of TermExpr
+} // End of TermExpr
 
-//SFactor = Sign Factor | Factor
-bool SFactor(istream& in, int& line)
+// SFactor = Sign Factor | Factor
+bool SFactor(istream &in, int &line)
 {
 	LexItem t = Parser::GetNextToken(in, line);
-	
+
 	bool status;
 	int sign = 0;
-	if(t == MINUS )
+	if (t == MINUS)
 	{
 		sign = -1;
 	}
-	else if(t == PLUS)
+	else if (t == PLUS)
 	{
 		sign = 1;
 	}
 	else
 		Parser::PushBackToken(t);
-		
+
 	status = Factor(in, line, sign);
 	return status;
-}//End of SFactor
+} // End of SFactor
 
-//Factor := ident | iconst | rconst | sconst | (Expr)
-bool Factor(istream& in, int& line, int sign) {
-	
+// Factor := ident | iconst | rconst | sconst | (Expr)
+bool Factor(istream &in, int &line, int sign)
+{
+
 	LexItem tok = Parser::GetNextToken(in, line);
-	
-	//cout << tok.GetLexeme() << endl;
-	if( tok == IDENT ) {
-		
+
+	// cout << tok.GetLexeme() << endl;
+	if (tok == IDENT)
+	{
 		string lexeme = tok.GetLexeme();
 		if (!(defVar.find(lexeme)->second))
 		{
 			ParseError(line, "Using Undefined Variable");
-			return false;	
+			return false;
 		}
 		return true;
 	}
-	else if( tok == ICONST ) {
-		
+	else if (tok == ICONST)
+	{
+
 		return true;
 	}
-	else if( tok == SCONST ) {
-		
+	else if (tok == SCONST)
+	{
+
 		return true;
 	}
-	else if( tok == RCONST ) {
-		
+	else if (tok == RCONST)
+	{
+
 		return true;
 	}
-	else if( tok == LPAREN ) {
+	else if (tok == LPAREN)
+	{
 		bool ex = Expr(in, line);
-		if( !ex ) {
+		if (!ex)
+		{
 			ParseError(line, "Missing expression after (");
 			return false;
 		}
-		if( Parser::GetNextToken(in, line) == RPAREN )
+		if (Parser::GetNextToken(in, line) == RPAREN)
 			return ex;
-		else 
+		else
 		{
 			Parser::PushBackToken(tok);
 			ParseError(line, "Missing ) after expression");
 			return false;
 		}
 	}
-	else if(tok.GetToken() == ERR){
+	else if (tok.GetToken() == ERR)
+	{
 		ParseError(line, "Unrecognized Input Pattern");
 		cout << "(" << tok.GetLexeme() << ")" << endl;
 		return false;
 	}
 
-	
 	return false;
 }
-
-
-
