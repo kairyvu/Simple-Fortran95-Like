@@ -54,7 +54,10 @@ public:
     string GetString() const
     {
         if (IsString())
+        {
+            cout << Stemp.size() << endl;
             return Stemp;
+        }
         throw "RUNTIME ERROR: Value not a string";
     }
 
