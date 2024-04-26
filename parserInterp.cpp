@@ -226,7 +226,6 @@ bool Decl(istream &in, int &line)
 			return false;
 		}
 	}
-
 	Parser::PushBackToken(t);
 	return true;
 } // End of Decl
@@ -407,7 +406,6 @@ bool VarList(istream &in, int &line, LexItem &idtok, int strlen)
 	}
 	else
 	{
-
 		Parser::PushBackToken(tok);
 		return true;
 	}
@@ -500,25 +498,68 @@ bool BlockIfStmt(istream &in, int &line) // DONE
 	{
 		Parser::PushBackToken(t);
 
-		status = SimpleStmt(in, line);
-		if (status)
+		if (state)
 		{
-			return true;
+			status = SimpleStmt(in, line);
+			if (status)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
 		else
 		{
-			ParseError(line, "If-Stmt Syntax Error");
-			return false;
+			int curLine = line;
+			while (true)
+			{
+				LexItem t = Parser::GetNextToken(in, line);
+				if (curLine != line)
+				{
+					Parser::PushBackToken(t);
+					return true;
+				}
+			}
 		}
 	}
 	nestlevel++;
 	// int level = nestlevel;
-	status = Stmt(in, line);
-	if (!status)
+	if (state)
 	{
-		ParseError(line, "Missing Statement for If-Stmt Then-Part");
-		return false;
+		status = Stmt(in, line);
+		if (!status)
+		{
+			ParseError(line, "Missing Statement for If-Stmt Then-Part");
+			return false;
+		}
 	}
+	else
+	{
+		while (true)
+		{
+			LexItem t = Parser::GetNextToken(in, line);
+			if (t == ELSE)
+			{
+				Parser::PushBackToken(t);
+				break;
+			}
+			if (t == END)
+			{
+				if (Parser::GetNextToken(in, line) == IF)
+				{
+					return true;
+				}
+			}
+			if (t == DONE)
+			{
+				ParseError(line, "Wrong Block IF");
+				return false;
+			}
+		}
+	}
+
 	t = Parser::GetNextToken(in, line);
 	if (t == ELSE)
 	{
@@ -535,7 +576,6 @@ bool BlockIfStmt(istream &in, int &line) // DONE
 
 	if (t != END)
 	{
-
 		ParseError(line, "Missing END of IF");
 		return false;
 	}
@@ -592,6 +632,16 @@ bool AssignStmt(istream &in, int &line)
 
 		if (t == ASSOP)
 		{
+			LexItem nxtTok = Parser::GetNextToken(in, line);
+			if (nxtTok.GetToken() == IDENT)
+			{
+				if ((SymTable[nxtTok.GetLexeme()] != CHARACTER && SymTable[idtok.GetLexeme()] == CHARACTER) || (SymTable[nxtTok.GetLexeme()] == CHARACTER && SymTable[idtok.GetLexeme()] != CHARACTER))
+				{
+					ParseError(line, "Type error");
+					return false;
+				}
+			}
+			Parser::PushBackToken(nxtTok);
 			Value val;
 			status = Expr(in, line, val);
 			if (!status)
@@ -603,24 +653,28 @@ bool AssignStmt(istream &in, int &line)
 			{
 				if (TempsResults[idtok.GetLexeme()].GetType() == VSTRING)
 				{
-					cout << "start" << endl;
 					int tempStrLen = sz(TempsResults[idtok.GetLexeme()].GetString());
-					cout << "1 :::: " << endl;
-					if (tempStrLen >= sz(val.GetString()))
+					if (val.IsString())
 					{
-						cout << "2 :::: " << endl;
-						string temp = val.GetString();
-						for (int i = sz(val.GetString()); i < tempStrLen; i++)
+						if (tempStrLen >= sz(val.GetString()))
 						{
-							temp += " ";
+							string temp = val.GetString();
+							for (int i = sz(val.GetString()); i < tempStrLen; i++)
+							{
+								temp += " ";
+							}
+							val = Value(temp);
 						}
-						val = Value(temp);
+						else
+						{
+							string temp = val.GetString().substr(0, tempStrLen);
+							val = Value(temp);
+						}
 					}
 					else
 					{
-						cout << "3 :::: " << endl;
-						string temp = val.GetString().substr(0, tempStrLen);
-						val = Value(temp);
+						ParseError(line, "Illegal mixed-mode assignment operation");
+						return false;
 					}
 				}
 				TempsResults[idtok.GetLexeme()] = val;
@@ -764,7 +818,7 @@ bool Expr(istream &in, int &line, Value &retVal)
 
 		if (retVal.IsErr())
 		{
-			ParseError(line, "Illegal operand type for the operation.");
+			ParseError(line -= 2, "Illegal operand type for the operation.");
 			return false;
 		}
 
@@ -804,7 +858,6 @@ bool MultExpr(istream &in, int &line, Value &retVal)
 	{
 		Value val2;
 		t1 = TermExpr(in, line, val2);
-
 		if (!t1)
 		{
 			ParseError(line, "Missing operand after operator");
@@ -813,7 +866,14 @@ bool MultExpr(istream &in, int &line, Value &retVal)
 		if (tok == MULT)
 			retVal = retVal * val2;
 		else
+		{
+			if ((val2.GetType() == VINT && val2.GetInt() == 0) || (val2.GetType() == VREAL && val2.GetReal() == 0.0))
+			{
+				ParseError(--line, "Run-Time Error-Illegal division by Zero");
+				return false;
+			}
 			retVal = retVal / val2;
+		}
 
 		if (retVal.IsErr())
 		{
@@ -845,51 +905,50 @@ bool TermExpr(istream &in, int &line, Value &retVal)
 	{
 		return false;
 	}
-
 	tok = Parser::GetNextToken(in, line);
+
 	if (tok.GetToken() == ERR)
 	{
 		ParseError(line, "Unrecognized Input Pattern");
 		cout << "(" << tok.GetLexeme() << ")" << endl;
 		return false;
 	}
-	if (retVal.GetType() == VINT || retVal.GetType() == VREAL)
+	if (tok.GetToken() != POW)
 	{
-		stack<Value> expo;
-		expo.push(val1);
-		while (tok == POW)
-		{
-			Value val2;
-			t1 = SFactor(in, line, val2);
-
-			if (!t1)
-			{
-				ParseError(line, "Missing exponent operand");
-				return false;
-			}
-			expo.push(val2);
-
-			tok = Parser::GetNextToken(in, line);
-			if (tok.GetToken() == ERR)
-			{
-				ParseError(line, "Unrecognized Input Pattern");
-				cout << "(" << tok.GetLexeme() << ")" << endl;
-				return false;
-			}
-		}
-		Value res = Value(1);
-		while (!expo.empty())
-		{
-			Value temp = expo.top();
-			res = temp.Power(res);
-			expo.pop();
-		}
-		// if ((int)res.GetReal() == res.GetReal())
-		// {
-		// 	res = Value((int)res.GetReal());
-		// }
-		retVal = res;
+		Parser::PushBackToken(tok);
+		return true;
 	}
+
+	stack<Value> expo;
+	expo.push(val1);
+	while (tok == POW)
+	{
+		Value val2;
+		t1 = SFactor(in, line, val2);
+
+		if (!t1)
+		{
+			ParseError(line, "Missing exponent operand");
+			return false;
+		}
+		expo.push(val2);
+
+		tok = Parser::GetNextToken(in, line);
+		if (tok.GetToken() == ERR)
+		{
+			ParseError(line, "Unrecognized Input Pattern");
+			cout << "(" << tok.GetLexeme() << ")" << endl;
+			return false;
+		}
+	}
+	Value res = Value(1);
+	while (!expo.empty())
+	{
+		Value temp = expo.top();
+		res = temp.Power(res);
+		expo.pop();
+	}
+	retVal = res;
 	Parser::PushBackToken(tok);
 	return true;
 } // End of TermExpr
@@ -914,7 +973,12 @@ bool SFactor(istream &in, int &line, Value &retVal)
 		Parser::PushBackToken(t);
 
 	status = Factor(in, line, sign, val);
-	if ((t == MINUS || t == PLUS) && status && !val.IsInt() && !val.IsReal())
+	if (!status)
+	{
+		ParseError(line, "Missing operand after operator");
+		return false;
+	}
+	if ((t == MINUS || t == PLUS) && !val.IsInt() && !val.IsReal())
 	{
 		ParseError(line, "Val needs to be number in SFactor");
 		return false;
@@ -935,6 +999,11 @@ bool Factor(istream &in, int &line, int sign, Value &retVal)
 		if (!(defVar.find(lexeme)->second))
 		{
 			ParseError(line, "Using Undefined Variable");
+			return false;
+		}
+		if (TempsResults.find(lexeme) == TempsResults.end())
+		{
+			ParseError(line, "Using uninitialized Variable");
 			return false;
 		}
 		if (sign == 0)
