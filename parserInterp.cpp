@@ -461,7 +461,6 @@ bool BlockIfStmt(istream &in, int &line) // DONE
 {
 	bool ex = false, status;
 	static int nestlevel = 0;
-	// int level;
 	LexItem t;
 
 	t = Parser::GetNextToken(in, line);
@@ -525,7 +524,6 @@ bool BlockIfStmt(istream &in, int &line) // DONE
 		}
 	}
 	nestlevel++;
-	// int level = nestlevel;
 	if (state)
 	{
 		status = Stmt(in, line);
@@ -818,7 +816,7 @@ bool Expr(istream &in, int &line, Value &retVal)
 
 		if (retVal.IsErr())
 		{
-			ParseError(line -= 2, "Illegal operand type for the operation.");
+			ParseError(line, "Illegal operand type for the operation.");
 			return false;
 		}
 
@@ -869,7 +867,7 @@ bool MultExpr(istream &in, int &line, Value &retVal)
 		{
 			if ((val2.GetType() == VINT && val2.GetInt() == 0) || (val2.GetType() == VREAL && val2.GetReal() == 0.0))
 			{
-				ParseError(--line, "Run-Time Error-Illegal division by Zero");
+				ParseError(line, "Run-Time Error-Illegal division by Zero");
 				return false;
 			}
 			retVal = retVal / val2;
