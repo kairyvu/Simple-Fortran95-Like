@@ -101,4 +101,4 @@
 ## How to run:
 
 - Clone this repo.
-- Run `program.cpp` by command line with exactly one argument represents a filename (some of the the testcases are provided under ***testcase*** directory).
+- Run `interpreter_main.cpp` by command line with exactly one argument represents a filename (some of the the testcases are provided under ***testcase*** directory).
